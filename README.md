@@ -1,8 +1,12 @@
 # WalkPad Remote
 
-A simple web-based BLE remote for walking pad treadmills. One page, no app install, no account required.
+A simple web-based BLE remote for Yesoul walking pad treadmills. One page, no app install, no account required.
+
+> **Chrome only** (macOS, Windows, Android). Safari, Firefox, and iOS browsers are not supported — they lack Web Bluetooth API.
 
 Built as a replacement for a broken physical remote. Opens in Chrome, connects via Bluetooth, and gives you Start/Stop/Speed controls with big touch-friendly buttons.
+
+Speed calibration is tuned for **Yesoul W2** (non-standard BLE speed resolution). Other FTMS treadmills may work but might need calibration adjustment — see [Speed Calibration](#speed-calibration).
 
 ## Features
 
