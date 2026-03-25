@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>WalkPad Remote</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #111;
+    color: #eee;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #aaa;
+  }
+
+  /* --- Connection screen --- */
+  #screen-connect {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 16px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  #screen-connect .status {
+    font-size: 0.95rem;
+    color: #888;
+    text-align: center;
+    min-height: 1.4em;
+  }
+
+  /* --- Control screen --- */
+  #screen-control {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 16px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .device-info {
+    font-size: 0.85rem;
+    color: #666;
+    text-align: center;
+  }
+
+  .speed-display {
+    font-size: 5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin: 12px 0;
+  }
+
+  .speed-unit {
+    font-size: 1.2rem;
+    color: #888;
+    font-weight: 400;
+  }
+
+  .stats {
+    display: flex;
+    gap: 24px;
+    font-size: 0.9rem;
+    color: #888;
+  }
+
+  .stats span { font-weight: 600; color: #ccc; }
+
+  /* --- Buttons --- */
+  .btn {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    border: none;
+    border-radius: 16px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .btn-connect {
+    background: #2563eb;
+    color: #fff;
+    padding: 24px;
+    font-size: 1.4rem;
+  }
+
+  .btn-start {
+    background: #16a34a;
+    color: #fff;
+  }
+
+  .btn-stop {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .status-line {
+    font-size: 0.7rem;
+    color: #555;
+    text-align: center;
+    font-family: 'SF Mono', 'Menlo', monospace;
+  }
+
+  .cmd-error {
+    background: #7f1d1d;
+    color: #fca5a5;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .preset-controls {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .btn-preset {
+    flex: 1;
+    background: #262626;
+    color: #ccc;
+    font-size: 1.1rem;
+    padding: 14px 0;
+  }
+
+  .start-stop-controls {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .start-stop-controls .btn {
+    flex: 1;
+  }
+
+  .speed-controls {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .btn-speed {
+    flex: 1;
+    background: #333;
+    color: #fff;
+    font-size: 2rem;
+    padding: 16px;
+  }
+
+  .btn-disconnect {
+    background: transparent;
+    color: #666;
+    border: 1px solid #333;
+    font-size: 0.95rem;
+    padding: 12px;
+    margin-top: auto;
+  }
+
+  .btn-diag-toggle {
+    background: transparent;
+    color: #555;
+    border: none;
+    font-size: 0.8rem;
+    padding: 8px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* --- Diagnostics --- */
+  #diagnostics {
+    display: none;
+    width: 100%;
+    max-width: 400px;
+    margin-top: 12px;
+  }
+
+  #diagnostics h3 {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 8px;
+  }
+
+  .diag-services {
+    font-size: 0.75rem;
+    color: #aaa;
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  #hex-log {
+    font-size: 0.7rem;
+    color: #6b8;
+    background: #0a0a0a;
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .log-send { color: #f97; }
+  .log-recv { color: #6b8; }
+  .log-info { color: #888; }
+
+  /* --- Not supported banner --- */
+  .not-supported {
+    background: #7f1d1d;
+    color: #fca5a5;
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  /* --- Instructions --- */
+  .instructions {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 8px;
+  }
+
+  .instructions-toggle {
+    background: transparent;
+    border: none;
+    color: #555;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 8px 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  .instructions-content {
+    display: none;
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #bbb;
+  }
+
+  .instructions-content h3 {
+    color: #ddd;
+    font-size: 0.95rem;
+    margin: 16px 0 8px 0;
+  }
+
+  .instructions-content h3:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-content ol,
+  .instructions-content ul {
+    padding-left: 20px;
+    margin: 4px 0;
+  }
+
+  .instructions-content li {
+    margin: 6px 0;
+  }
+
+  .instructions-content code {
+    background: #2a2a2a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-size: 0.8rem;
+    color: #e0e0e0;
+  }
+
+  .instructions-content .step-num {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .instructions-content .warn {
+    background: #422006;
+    color: #fbbf24;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 0.8rem;
+  }
+
+  .instructions-content .ok {
+    background: #052e16;
+    color: #4ade80;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>WalkPad Remote <span style="font-size:0.75rem;color:#555;font-weight:400">v9</span></h1>
+
+<!-- Connection screen -->
+<div id="screen-connect">
+  <div id="not-supported" style="display:none" class="not-supported">
+    Web Bluetooth not supported.<br>Use Chrome on macOS, Windows, or Android.
+  </div>
+  <button class="btn btn-connect" id="btn-connect" onclick="connectDevice()">
+    Connect Treadmill
+  </button>
+  <div class="status" id="connect-status"></div>
+
+  <div class="instructions">
+    <button class="instructions-toggle" onclick="toggleInstructions()">Как подключить?</button>
+    <div class="instructions-content" id="instructions-content">
+
+      <div class="warn">НЕ спаривай дорожку через Системные настройки macOS! Если уже спарена &mdash; удали из списка Bluetooth-устройств.</div>
+
+      <ol>
+        <li>Включи дорожку (встань на ленту), подожди 5 сек</li>
+        <li>Проверь Bluetooth на Маке: <strong>Системные настройки &rarr; Bluetooth &rarr; Вкл</strong></li>
+        <li>Нажми <strong>&laquo;Connect Treadmill&raquo;</strong> выше</li>
+        <li>В попапе Chrome выбери устройство <strong>Yesoul</strong> / <strong>YS-xxx</strong> &rarr; <strong>Pair</strong></li>
+      </ol>
+
+      <h3>Проблемы</h3>
+      <ul>
+        <li><strong>Нет устройств?</strong> &mdash; Сойди с дорожки и встань снова, она засыпает через 1-2 мин.</li>
+        <li><strong>Не подключается?</strong> &mdash; Закрой Yesoul Fitness / PitPat, BLE позволяет только одно соединение.</li>
+        <li><strong>Только Chrome</strong> (macOS, Windows, Android). Safari и Firefox не поддерживают Web Bluetooth.</li>
+      </ul>
+
+    </div>
+  </div>
+</div>
+
+<!-- Control screen -->
+<div id="screen-control">
+  <div class="speed-display">
+    <span id="current-speed">0.3</span>
+    <span class="speed-unit">km/h</span>
+  </div>
+
+  <div class="stats">
+    <div>Time: <span id="stat-time">00:00</span></div>
+    <div>Dist: <span id="stat-dist">0.00</span> km</div>
+  </div>
+
+  <div class="cmd-error" id="cmd-error" style="display:none"></div>
+
+  <div class="preset-controls">
+    <button class="btn btn-preset" onclick="cmdPreset(1.0)">1.0</button>
+    <button class="btn btn-preset" onclick="cmdPreset(1.5)">1.5</button>
+    <button class="btn btn-preset" onclick="cmdPreset(2.0)">2.0</button>
+    <button class="btn btn-preset" onclick="cmdPreset(2.5)">2.5</button>
+    <button class="btn btn-preset" onclick="cmdPreset(3.0)">3.0</button>
+  </div>
+
+  <div class="speed-controls">
+    <button class="btn btn-speed" id="btn-minus" onclick="cmdSpeedDown()">-</button>
+    <button class="btn btn-speed" id="btn-plus" onclick="cmdSpeedUp()">+</button>
+  </div>
+
+  <div class="start-stop-controls">
+    <button class="btn btn-start" id="btn-start" onclick="cmdStart()">Start</button>
+    <button class="btn btn-stop" id="btn-stop" onclick="cmdStop()">Stop</button>
+  </div>
+
+  <button class="btn btn-disconnect" onclick="disconnectDevice()">Disconnect</button>
+  <button class="btn-diag-toggle" onclick="toggleDiag()">Diagnostics</button>
+
+  <div id="diagnostics">
+    <div class="device-info" id="device-info" style="margin-bottom:8px"></div>
+    <div class="status-line" id="status-line" style="margin-bottom:12px"></div>
+    <h3>GATT Services</h3>
+    <div class="diag-services" id="diag-services"></div>
+    <h3>BLE Log</h3>
+    <div id="hex-log"></div>
+  </div>
+</div>
+
+<script>
+// --- State ---
+let bleDevice = null;
+let gattServer = null;
+let controlPoint = null;
+let treadmillDataChar = null;
+let speedRangeChar = null;
+
+// Yesoul W2 speed resolution: BLE value * 0.006 = km/h (not 0.01 as FTMS spec says)
+const SPEED_RES = 0.006;
+
+function bleToKmh(bleVal) { return bleVal * SPEED_RES; }
+function kmhToBle(kmh) { return Math.round(kmh / SPEED_RES); }
+
+let targetSpeed = kmhToBle(0.3);  // in BLE units
+let minSpeed = kmhToBle(0.3);     // 0.3 km/h
+let maxSpeed = kmhToBle(6.0);     // 6.0 km/h
+let speedStep = kmhToBle(0.1);    // 0.1 km/h step
+let isRunning = false;
+let protocol = 'unknown'; // 'ftms' | 'proprietary' | 'unknown'
+
+const FTMS_SERVICE = 0x1826;
+const FTMS_CONTROL_POINT = 0x2AD9;
+const FTMS_TREADMILL_DATA = 0x2ACD;
+const FTMS_SPEED_RANGE = 0x2AD4;
+const FTMS_MACHINE_STATUS = 0x2ADA;
+const FTMS_FEATURE = 0x2ACC;
+
+// --- UI helpers ---
+const $ = id => document.getElementById(id);
+
+function setStatus(msg) {
+  $('connect-status').textContent = msg;
+}
+
+function showScreen(name) {
+  $('screen-connect').style.display = name === 'connect' ? 'flex' : 'none';
+  $('screen-control').style.display = name === 'control' ? 'flex' : 'none';
+}
+
+function updateSpeedDisplay(bleValue) {
+  $('current-speed').textContent = bleToKmh(bleValue).toFixed(1);
+}
+
+function updateRunningUI(running) {
+  isRunning = running;
+  $('btn-start').disabled = running;
+  $('btn-stop').disabled = !running;
+  updateStatusLine();
+}
+
+function updateStatusLine() {
+  $('status-line').textContent =
+    `proto=${protocol} cp=${!!controlPoint} run=${isRunning} target=${bleToKmh(targetSpeed).toFixed(1)}km/h (ble=${targetSpeed})`;
+}
+
+function logHex(direction, data, note) {
+  const log = $('hex-log');
+  const line = document.createElement('div');
+  const hex = Array.from(new Uint8Array(data instanceof DataView ? data.buffer : data))
+    .map(b => b.toString(16).padStart(2, '0')).join(' ');
+  const ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  if (direction === 'send') {
+    line.className = 'log-send';
+    line.textContent = `${ts} >> ${hex}${note ? '  (' + note + ')' : ''}`;
+  } else if (direction === 'recv') {
+    line.className = 'log-recv';
+    line.textContent = `${ts} << ${hex}${note ? '  (' + note + ')' : ''}`;
+  } else {
+    line.className = 'log-info';
+    line.textContent = `${ts} -- ${note || hex}`;
+  }
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function toggleDiag() {
+  const d = $('diagnostics');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleInstructions() {
+  const d = $('instructions-content');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+
+// --- BLE Connection ---
+
+// After successful connection, set up services and switch to control screen
+async function setupAfterConnect() {
+  setStatus('Discovering services...');
+
+  const services = await gattServer.getPrimaryServices();
+  await displayServices(services);
+
+  let ftmsService = null;
+  for (const svc of services) {
+    if (svc.uuid === BluetoothUUID.getService(FTMS_SERVICE)) {
+      ftmsService = svc;
+      break;
+    }
+  }
+
+  if (ftmsService) {
+    protocol = 'ftms';
+    await setupFTMS(ftmsService);
+  } else {
+    protocol = 'proprietary';
+    logHex('info', [], 'FTMS not found. Proprietary protocol detected.');
+    await setupProprietaryDiscovery(services);
+  }
+
+  $('device-info').textContent =
+    `${bleDevice.name || 'Unknown'} | ${protocol.toUpperCase()}`;
+  showScreen('control');
+  updateStatusLine();
+}
+
+// Try to reconnect to a previously paired device (no picker)
+async function tryAutoReconnect() {
+  if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return false;
+
+  try {
+    const devices = await navigator.bluetooth.getDevices();
+    if (devices.length === 0) return false;
+
+    for (const device of devices) {
+      setStatus(`Reconnecting to ${device.name || 'device'}...`);
+      $('btn-connect').disabled = true;
+
+      try {
+        // Try direct connect first (works if device is in range)
+        bleDevice = device;
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+        gattServer = await bleDevice.gatt.connect();
+        await setupAfterConnect();
+        return true;
+      } catch (e1) {
+        console.log('Direct reconnect failed, trying watchAdvertisements...', e1);
+
+        // Fallback: wait for advertisement
+        try {
+          const abortController = new AbortController();
+          const found = await new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+              abortController.abort();
+              resolve(false);
+            }, 6000);
+
+            device.addEventListener('advertisementreceived', () => {
+              clearTimeout(timeout);
+              abortController.abort();
+              resolve(true);
+            }, { once: true });
+
+            device.watchAdvertisements({ signal: abortController.signal })
+              .catch(() => resolve(false));
+          });
+
+          if (found) {
+            bleDevice = device;
+            bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+            gattServer = await bleDevice.gatt.connect();
+            await setupAfterConnect();
+            return true;
+          }
+        } catch (e2) {
+          console.log('watchAdvertisements reconnect failed:', e2);
+        }
+      }
+    }
+  } catch (e) {
+    console.log('getDevices not available or failed:', e);
+  }
+
+  $('btn-connect').disabled = false;
+  setStatus('');
+  return false;
+}
+
+async function connectDevice() {
+  if (!navigator.bluetooth) {
+    $('not-supported').style.display = 'block';
+    return;
+  }
+
+  setStatus('Scanning...');
+  $('btn-connect').disabled = true;
+
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [
+        { namePrefix: 'Yesoul' },
+        { namePrefix: 'YS' },
+      ],
+      optionalServices: [FTMS_SERVICE, 0xFFF0, 0xFE00, 0x1800, 0x180A],
+    });
+
+    bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+    setStatus(`Connecting to ${bleDevice.name || 'device'}...`);
+
+    gattServer = await bleDevice.gatt.connect();
+    await setupAfterConnect();
+
+  } catch (err) {
+    if (err.name === 'NotFoundError') {
+      setStatus('No device selected.');
+    } else {
+      setStatus(`Error: ${err.message}`);
+      console.error(err);
+    }
+    $('btn-connect').disabled = false;
+  }
+}
+
+async function displayServices(services) {
+  const el = $('diag-services');
+  el.textContent = '';
+  for (const svc of services) {
+    let text = `Service: ${svc.uuid}\n`;
+    try {
+      const chars = await svc.getCharacteristics();
+      for (const ch of chars) {
+        const props = [];
+        if (ch.properties.read) props.push('R');
+        if (ch.properties.write) props.push('W');
+        if (ch.properties.writeWithoutResponse) props.push('Wn');
+        if (ch.properties.notify) props.push('N');
+        if (ch.properties.indicate) props.push('I');
+        text += `  ${ch.uuid} [${props.join(',')}]\n`;
+      }
+    } catch (e) {
+      text += `  (cannot read characteristics)\n`;
+    }
+    el.textContent += text + '\n';
+  }
+}
+
+// --- FTMS Setup ---
+async function setupFTMS(service) {
+  logHex('info', [], 'FTMS service found');
+
+  // Control Point
+  try {
+    controlPoint = await service.getCharacteristic(FTMS_CONTROL_POINT);
+    await controlPoint.startNotifications();
+    controlPoint.addEventListener('characteristicvaluechanged', onControlPointResponse);
+    logHex('info', [], 'Control Point ready (indicate subscribed)');
+  } catch (e) {
+    logHex('info', [], `Control Point error: ${e.message}`);
+  }
+
+  // Treadmill Data (notify)
+  try {
+    treadmillDataChar = await service.getCharacteristic(FTMS_TREADMILL_DATA);
+    await treadmillDataChar.startNotifications();
+    treadmillDataChar.addEventListener('characteristicvaluechanged', onTreadmillData);
+    logHex('info', [], 'Treadmill Data notify subscribed');
+  } catch (e) {
+    logHex('info', [], `Treadmill Data not available: ${e.message}`);
+  }
+
+  // Machine Status (notify)
+  try {
+    const machineStatus = await service.getCharacteristic(FTMS_MACHINE_STATUS);
+    await machineStatus.startNotifications();
+    machineStatus.addEventListener('characteristicvaluechanged', onMachineStatus);
+    logHex('info', [], 'Machine Status notify subscribed');
+  } catch (e) {
+    logHex('info', [], `Machine Status not available: ${e.message}`);
+  }
+
+  // Speed Range
+  try {
+    speedRangeChar = await service.getCharacteristic(FTMS_SPEED_RANGE);
+    const rangeData = await speedRangeChar.readValue();
+    minSpeed = rangeData.getUint16(0, true);
+    maxSpeed = rangeData.getUint16(2, true);
+    const deviceStep = rangeData.getUint16(4, true);
+    logHex('recv', rangeData,
+      `Speed range: ${bleToKmh(minSpeed).toFixed(1)}-${bleToKmh(maxSpeed).toFixed(1)} km/h, step ${bleToKmh(deviceStep).toFixed(2)}`);
+    // Clamp target
+    if (targetSpeed < minSpeed) targetSpeed = minSpeed;
+    if (targetSpeed > maxSpeed) targetSpeed = maxSpeed;
+  } catch (e) {
+    logHex('info', [], `Speed Range not available: ${e.message}`);
+  }
+
+  // Request Control
+  await ftmsRequestControl();
+}
+
+// --- FTMS Commands ---
+function showError(msg) {
+  $('cmd-error').textContent = msg;
+  $('cmd-error').style.display = 'block';
+  setTimeout(() => { $('cmd-error').style.display = 'none'; }, 5000);
+}
+
+async function ftmsWrite(data, note) {
+  if (!controlPoint) {
+    const err = `Cannot send: controlPoint=${!!controlPoint}, protocol=${protocol}`;
+    logHex('info', [], err);
+    showError('Not connected. Press "Connect Treadmill".');
+    console.error(err);
+    return false;
+  }
+  logHex('send', data, note);
+  try {
+    await controlPoint.writeValue(new Uint8Array(data));
+    return true;
+  } catch (e) {
+    logHex('info', [], `Write error: ${e.message}`);
+    showError(`BLE error: ${e.message}`);
+    console.error('ftmsWrite error:', e);
+    return false;
+  }
+}
+
+async function ftmsRequestControl() {
+  await ftmsWrite([0x00], 'Request Control');
+}
+
+async function cmdStart() {
+  if (protocol === 'ftms') {
+    await ftmsWrite([0x07], 'Start');
+    // Also set target speed
+    await cmdSetSpeed(targetSpeed);
+    updateRunningUI(true);
+  }
+}
+
+async function cmdStop() {
+  if (protocol === 'ftms') {
+    await ftmsWrite([0x08, 0x01], 'Stop');
+    updateRunningUI(false);
+  }
+}
+
+let speedDebounceTimer = null;
+
+async function cmdSetSpeed(speedHundredths) {
+  targetSpeed = Math.max(minSpeed, Math.min(maxSpeed, speedHundredths));
+  if (protocol === 'ftms' && controlPoint) {
+    clearTimeout(speedDebounceTimer);
+    speedDebounceTimer = setTimeout(async () => {
+      const lo = targetSpeed & 0xFF;
+      const hi = (targetSpeed >> 8) & 0xFF;
+      await ftmsWrite([0x02, lo, hi], `Set Speed ${bleToKmh(targetSpeed).toFixed(1)} km/h (BLE=${targetSpeed})`);
+      speedDebounceTimer = null;
+    }, 300);
+  }
+}
+
+async function cmdPreset(kmh) {
+  if (protocol === 'ftms' && controlPoint) {
+    if (!isRunning) {
+      await ftmsWrite([0x07], 'Start');
+      updateRunningUI(true);
+      await new Promise(r => setTimeout(r, 500));
+    }
+    targetSpeed = kmhToBle(kmh);
+    const lo = targetSpeed & 0xFF;
+    const hi = (targetSpeed >> 8) & 0xFF;
+    await ftmsWrite([0x02, lo, hi], `Set Speed ${kmh} km/h (BLE=${targetSpeed})`);
+  }
+}
+
+async function cmdSpeedUp() {
+  await cmdSetSpeed(targetSpeed + speedStep);
+}
+
+async function cmdSpeedDown() {
+  await cmdSetSpeed(targetSpeed - speedStep);
+}
+
+// --- FTMS Event Handlers ---
+function onControlPointResponse(event) {
+  const v = event.target.value;
+  logHex('recv', v, 'Control Point response');
+  // Response format: [0x80, requestOpCode, resultCode]
+  if (v.byteLength >= 3 && v.getUint8(0) === 0x80) {
+    const reqOp = v.getUint8(1);
+    const result = v.getUint8(2);
+    const resultNames = { 1: 'Success', 2: 'Not Supported', 3: 'Invalid Param',
+      4: 'Operation Failed', 5: 'Not Permitted' };
+    logHex('info', [], `  Op 0x${reqOp.toString(16)}: ${resultNames[result] || result}`);
+  }
+}
+
+function onTreadmillData(event) {
+  const v = event.target.value;
+  logHex('recv', v, 'Treadmill Data');
+
+  const flags = v.getUint16(0, true);
+  let offset = 2;
+
+  // Bit 0: More Data (0 = speed present)
+  if (!(flags & 0x0001)) {
+    const speed = v.getUint16(offset, true);
+    // Only sync targetSpeed from treadmill if user is not actively changing speed
+    if (!speedDebounceTimer) {
+      targetSpeed = speed;
+    }
+    updateSpeedDisplay(speed);
+    offset += 2;
+  }
+
+  // Bit 1: Average Speed
+  if (flags & 0x0002) offset += 2;
+
+  // Bit 2: Total Distance (uint24)
+  if (flags & 0x0004) {
+    const dist = v.getUint8(offset) | (v.getUint8(offset+1) << 8) | (v.getUint8(offset+2) << 16);
+    $('stat-dist').textContent = (dist / 1000).toFixed(2);
+    offset += 3;
+  }
+
+  // Bit 3: Inclination + Ramp Angle
+  if (flags & 0x0008) offset += 4;
+
+  // Bit 4: Elevation Gain
+  if (flags & 0x0010) offset += 4;
+
+  // Bit 5: Instantaneous Pace
+  if (flags & 0x0020) offset += 2; // was skipping 1 byte, pace is uint8 actually... let's skip carefully
+
+  // Bit 6: Average Pace
+  if (flags & 0x0040) offset += 1;
+
+  // Bit 7: Expended Energy
+  if (flags & 0x0080) offset += 5;
+
+  // Bit 8: Heart Rate
+  if (flags & 0x0100) offset += 1;
+
+  // Bit 9: Metabolic Equivalent
+  if (flags & 0x0200) offset += 1;
+
+  // Bit 10: Elapsed Time
+  if (flags & 0x0400) {
+    if (offset + 2 <= v.byteLength) {
+      const secs = v.getUint16(offset, true);
+      const mm = Math.floor(secs / 60).toString().padStart(2, '0');
+      const ss = (secs % 60).toString().padStart(2, '0');
+      $('stat-time').textContent = `${mm}:${ss}`;
+    }
+  }
+}
+
+function onMachineStatus(event) {
+  const v = event.target.value;
+  logHex('recv', v, 'Machine Status');
+  if (v.byteLength >= 1) {
+    const status = v.getUint8(0);
+    const names = {
+      0x01: 'Reset', 0x02: 'Stopped by user', 0x03: 'Stopped by safety',
+      0x04: 'Started/Resumed', 0x05: 'Target Speed Changed',
+      0x07: 'Paused by user', 0x08: 'Paused by safety',
+      0xFF: 'Control Permission Lost'
+    };
+    logHex('info', [], `  Status: ${names[status] || '0x' + status.toString(16)}`);
+    if (status === 0x04) updateRunningUI(true);
+    if (status === 0x02 || status === 0x03) updateRunningUI(false);
+  }
+}
+
+// --- Proprietary Discovery ---
+async function setupProprietaryDiscovery(services) {
+  // Subscribe to all notify characteristics for debugging
+  for (const svc of services) {
+    try {
+      const chars = await svc.getCharacteristics();
+      for (const ch of chars) {
+        if (ch.properties.notify || ch.properties.indicate) {
+          try {
+            await ch.startNotifications();
+            ch.addEventListener('characteristicvaluechanged', (event) => {
+              logHex('recv', event.target.value,
+                `Notify from ${event.target.uuid.substring(0, 8)}`);
+            });
+            logHex('info', [], `Subscribed to notify: ${ch.uuid}`);
+          } catch (e) { /* skip */ }
+        }
+      }
+    } catch (e) { /* skip */ }
+  }
+}
+
+// --- Disconnect ---
+function disconnectDevice() {
+  if (bleDevice && bleDevice.gatt.connected) {
+    bleDevice.gatt.disconnect();
+  }
+  onDisconnected();
+}
+
+function onDisconnected() {
+  controlPoint = null;
+  treadmillDataChar = null;
+  gattServer = null;
+  isRunning = false;
+  protocol = 'unknown';
+  $('btn-connect').disabled = false;
+  showScreen('connect');
+  setStatus('Disconnected');
+}
+
+// --- Init ---
+if (!navigator.bluetooth) {
+  $('not-supported').style.display = 'block';
+  $('btn-connect').disabled = true;
+}
+updateSpeedDisplay(targetSpeed);
+
+// Try auto-reconnect to previously paired device
+tryAutoReconnect();
+</script>
+</body>
+</html>
