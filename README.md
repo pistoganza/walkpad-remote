@@ -26,12 +26,12 @@ Should work with other FTMS-compatible treadmills. Speed calibration may differ 
 
 ### Option 1: GitHub Pages (recommended)
 
-Open **[https://egorvoynov.github.io/walkpad-remote/](https://egorvoynov.github.io/walkpad-remote/)** in Chrome.
+Open **[https://pistoganza.github.io/walkpad-remote/](https://pistoganza.github.io/walkpad-remote/)** in Chrome.
 
 ### Option 2: Run locally
 
 ```bash
-git clone https://github.com/egorvoynov/walkpad-remote.git
+git clone https://github.com/pistoganza/walkpad-remote.git
 cd walkpad-remote
 python3 -m http.server 8092
 # Open http://localhost:8092 in Chrome
