@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -365,23 +365,23 @@
   <div class="status" id="connect-status"></div>
 
   <div class="instructions">
-    <button class="instructions-toggle" onclick="toggleInstructions()">Как подключить?</button>
+    <button class="instructions-toggle" onclick="toggleInstructions()">How to connect?</button>
     <div class="instructions-content" id="instructions-content">
 
-      <div class="warn">НЕ спаривай дорожку через Системные настройки macOS! Если уже спарена &mdash; удали из списка Bluetooth-устройств.</div>
+      <div class="warn">Do NOT pair the treadmill via System Settings! Web Bluetooth handles the connection. If already paired &mdash; remove it from Bluetooth devices first.</div>
 
       <ol>
-        <li>Включи дорожку (встань на ленту), подожди 5 сек</li>
-        <li>Проверь Bluetooth на Маке: <strong>Системные настройки &rarr; Bluetooth &rarr; Вкл</strong></li>
-        <li>Нажми <strong>&laquo;Connect Treadmill&raquo;</strong> выше</li>
-        <li>В попапе Chrome выбери устройство <strong>Yesoul</strong> / <strong>YS-xxx</strong> &rarr; <strong>Pair</strong></li>
+        <li>Turn on the treadmill (step on the belt), wait 5 sec</li>
+        <li>Check Bluetooth on your Mac: <strong>System Settings &rarr; Bluetooth &rarr; On</strong></li>
+        <li>Click <strong>"Connect Treadmill"</strong> above</li>
+        <li>In the Chrome popup select <strong>Yesoul</strong> / <strong>YS-xxx</strong> &rarr; <strong>Pair</strong></li>
       </ol>
 
-      <h3>Проблемы</h3>
+      <h3>Troubleshooting</h3>
       <ul>
-        <li><strong>Нет устройств?</strong> &mdash; Сойди с дорожки и встань снова, она засыпает через 1-2 мин.</li>
-        <li><strong>Не подключается?</strong> &mdash; Закрой Yesoul Fitness / PitPat, BLE позволяет только одно соединение.</li>
-        <li><strong>Только Chrome</strong> (macOS, Windows, Android). Safari и Firefox не поддерживают Web Bluetooth.</li>
+        <li><strong>No devices?</strong> &mdash; Step off the treadmill and back on to wake it up. It sleeps after 1-2 min.</li>
+        <li><strong>Can't connect?</strong> &mdash; Close Yesoul Fitness / PitPat. Only one BLE connection at a time.</li>
+        <li><strong>Chrome only</strong> (macOS, Windows, Android). Safari and Firefox don't support Web Bluetooth.</li>
       </ul>
 
     </div>
