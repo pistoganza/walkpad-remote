@@ -348,6 +348,79 @@
     margin: 10px 0;
     font-size: 0.8rem;
   }
+
+  /* --- History --- */
+  .history {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 8px;
+  }
+
+  .history-toggle {
+    background: transparent;
+    border: none;
+    color: #555;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 8px 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  .history-content {
+    display: none;
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 8px;
+  }
+
+  .history-empty {
+    color: #555;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .history-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid #2a2a2a;
+    font-size: 0.85rem;
+    color: #bbb;
+  }
+
+  .history-entry:last-of-type {
+    border-bottom: none;
+  }
+
+  .history-date {
+    color: #777;
+    font-size: 0.75rem;
+  }
+
+  .history-stats {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .history-stats span {
+    color: #ddd;
+    font-weight: 600;
+  }
+
+  .btn-clear-history {
+    background: transparent;
+    border: 1px solid #333;
+    color: #666;
+    font-size: 0.8rem;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 12px;
+  }
 </style>
 </head>
 <body>
@@ -386,6 +459,14 @@
 
     </div>
   </div>
+
+  <div class="history">
+    <button class="history-toggle" onclick="toggleHistory()">Workout history</button>
+    <div class="history-content" id="history-content">
+      <div id="history-list"></div>
+      <button class="btn-clear-history" id="btn-clear-history" onclick="clearHistory()">Clear history</button>
+    </div>
+  </div>
 </div>
 
 <!-- Control screen -->
@@ -405,7 +486,7 @@
   <div class="preset-controls">
     <button class="btn btn-preset" onclick="cmdPreset(1.0)">1.0</button>
     <button class="btn btn-preset" onclick="cmdPreset(1.5)">1.5</button>
-    <button class="btn btn-preset" onclick="cmdPreset(2.0)">2.0</button>
+    <button class="btn btn-preset" onclick="cmdPreset(1.8)">1.8</button>
     <button class="btn btn-preset" onclick="cmdPreset(2.5)">2.5</button>
     <button class="btn btn-preset" onclick="cmdPreset(3.0)">3.0</button>
   </div>
@@ -453,6 +534,12 @@ let maxSpeed = kmhToBle(6.0);     // 6.0 km/h
 let speedStep = kmhToBle(0.1);    // 0.1 km/h step
 let isRunning = false;
 let protocol = 'unknown'; // 'ftms' | 'proprietary' | 'unknown'
+
+// Session tracking for history
+let sessionElapsedSecs = 0;
+let sessionDistMeters = 0;
+const HISTORY_KEY = 'w2_history';
+const MIN_SESSION_SECS = 30;
 
 const FTMS_SERVICE = 0x1826;
 const FTMS_CONTROL_POINT = 0x2AD9;
@@ -758,8 +845,9 @@ async function ftmsRequestControl() {
 
 async function cmdStart() {
   if (protocol === 'ftms') {
+    sessionElapsedSecs = 0;
+    sessionDistMeters = 0;
     await ftmsWrite([0x07], 'Start');
-    // Also set target speed
     await cmdSetSpeed(targetSpeed);
     updateRunningUI(true);
   }
@@ -767,6 +855,7 @@ async function cmdStart() {
 
 async function cmdStop() {
   if (protocol === 'ftms') {
+    saveSession();
     await ftmsWrite([0x08, 0x01], 'Stop');
     updateRunningUI(false);
   }
@@ -847,6 +936,7 @@ function onTreadmillData(event) {
   // Bit 2: Total Distance (uint24)
   if (flags & 0x0004) {
     const dist = v.getUint8(offset) | (v.getUint8(offset+1) << 8) | (v.getUint8(offset+2) << 16);
+    sessionDistMeters = dist;
     $('stat-dist').textContent = (dist / 1000).toFixed(2);
     offset += 3;
   }
@@ -876,6 +966,7 @@ function onTreadmillData(event) {
   if (flags & 0x0400) {
     if (offset + 2 <= v.byteLength) {
       const secs = v.getUint16(offset, true);
+      sessionElapsedSecs = secs;
       const mm = Math.floor(secs / 60).toString().padStart(2, '0');
       const ss = (secs % 60).toString().padStart(2, '0');
       $('stat-time').textContent = `${mm}:${ss}`;
@@ -931,6 +1022,7 @@ function disconnectDevice() {
 }
 
 function onDisconnected() {
+  if (isRunning) saveSession();
   controlPoint = null;
   treadmillDataChar = null;
   gattServer = null;
@@ -939,6 +1031,60 @@ function onDisconnected() {
   $('btn-connect').disabled = false;
   showScreen('connect');
   setStatus('Disconnected');
+  renderHistory();
+}
+
+// --- History ---
+function saveSession() {
+  if (sessionElapsedSecs < MIN_SESSION_SECS) return;
+  const distKm = sessionDistMeters / 1000;
+  const avgSpeed = sessionElapsedSecs > 0 ? (distKm / (sessionElapsedSecs / 3600)) : 0;
+  const entry = {
+    date: new Date().toISOString(),
+    durationSecs: sessionElapsedSecs,
+    distKm: Math.round(distKm * 1000) / 1000,
+    avgSpeedKmh: Math.round(avgSpeed * 10) / 10,
+  };
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  history.unshift(entry);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  sessionElapsedSecs = 0;
+  sessionDistMeters = 0;
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const list = $('history-list');
+  const clearBtn = $('btn-clear-history');
+
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">No workouts yet</div>';
+    clearBtn.style.display = 'none';
+    return;
+  }
+
+  clearBtn.style.display = 'block';
+  list.innerHTML = history.map(e => {
+    const d = new Date(e.date);
+    const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const mm = Math.floor(e.durationSecs / 60);
+    const ss = (e.durationSecs % 60).toString().padStart(2, '0');
+    return `<div class="history-entry">
+      <div><div class="history-date">${dateStr}, ${timeStr}</div></div>
+      <div class="history-stats"><span>${mm}:${ss}</span> &middot; ${e.distKm.toFixed(2)} km &middot; avg <span>${e.avgSpeedKmh.toFixed(1)}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function toggleHistory() {
+  const d = $('history-content');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
 }
 
 // --- Init ---
@@ -947,6 +1093,7 @@ if (!navigator.bluetooth) {
   $('btn-connect').disabled = true;
 }
 updateSpeedDisplay(targetSpeed);
+renderHistory();
 
 // Try auto-reconnect to previously paired device
 tryAutoReconnect();

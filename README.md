@@ -11,12 +11,13 @@ Speed calibration is tuned for **Yesoul W2** (non-standard BLE speed resolution)
 ## Features
 
 - **One-click connect** via Web Bluetooth (Chrome)
-- **Preset speeds**: 1.0 / 1.5 / 2.0 / 2.5 / 3.0 km/h (auto-starts the treadmill)
+- **Preset speeds**: 1.0 / 1.5 / 1.8 / 2.5 / 3.0 km/h (auto-starts the treadmill)
 - **Fine control**: +/- buttons with 0.1 km/h step
 - **Live speed display** from treadmill data (BLE notify)
 - **Auto-reconnect** on page reload (no re-pairing needed)
 - **Dark theme**, large buttons (designed for use while walking)
 - **Diagnostics panel**: GATT services, hex BLE log, connection state
+- **Workout history**: session log stored locally in browser (duration, distance, avg speed)
 - **Mobile-friendly**: works on phone screens too
 
 ## Tested On
