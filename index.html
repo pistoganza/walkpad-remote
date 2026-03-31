@@ -425,7 +425,7 @@
 </head>
 <body>
 
-<h1>WalkPad Remote <span style="font-size:0.75rem;color:#555;font-weight:400">v10</span></h1>
+<h1>WalkPad Remote <span style="font-size:0.75rem;color:#555;font-weight:400">v11</span></h1>
 
 <!-- Connection screen -->
 <div id="screen-connect">
@@ -500,6 +500,8 @@
     <button class="btn btn-start" id="btn-start" onclick="cmdStart()">Start</button>
     <button class="btn btn-stop" id="btn-stop" onclick="cmdStop()">Stop</button>
   </div>
+
+  <div id="control-history" style="width:100%;max-width:400px;margin-top:4px"></div>
 
   <button class="btn btn-disconnect" onclick="disconnectDevice()">Disconnect</button>
   <button class="btn-diag-toggle" onclick="toggleDiag()">Diagnostics</button>
@@ -878,15 +880,21 @@ async function cmdSetSpeed(speedHundredths) {
 
 async function cmdPreset(kmh) {
   if (protocol === 'ftms' && controlPoint) {
-    if (!isRunning) {
+    const wasRunning = isRunning;
+    if (!wasRunning) {
       await ftmsWrite([0x07], 'Start');
       updateRunningUI(true);
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 1000));
     }
     targetSpeed = kmhToBle(kmh);
     const lo = targetSpeed & 0xFF;
     const hi = (targetSpeed >> 8) & 0xFF;
     await ftmsWrite([0x02, lo, hi], `Set Speed ${kmh} km/h (BLE=${targetSpeed})`);
+    // Retry after cold start — treadmill may ignore first speed command
+    if (!wasRunning) {
+      await new Promise(r => setTimeout(r, 500));
+      await ftmsWrite([0x02, lo, hi], `Set Speed retry ${kmh} km/h`);
+    }
   }
 }
 
@@ -1052,19 +1060,9 @@ function saveSession() {
   sessionDistMeters = 0;
 }
 
-function renderHistory() {
-  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-  const list = $('history-list');
-  const clearBtn = $('btn-clear-history');
-
-  if (history.length === 0) {
-    list.innerHTML = '<div class="history-empty">No workouts yet</div>';
-    clearBtn.style.display = 'none';
-    return;
-  }
-
-  clearBtn.style.display = 'block';
-  list.innerHTML = history.map(e => {
+function renderHistoryHTML(history) {
+  if (history.length === 0) return '';
+  return history.map(e => {
     const d = new Date(e.date);
     const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
     const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -1075,6 +1073,25 @@ function renderHistory() {
       <div class="history-stats"><span>${mm}:${ss}</span> &middot; ${e.distKm.toFixed(2)} km &middot; avg <span>${e.avgSpeedKmh.toFixed(1)}</span></div>
     </div>`;
   }).join('');
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const html = renderHistoryHTML(history);
+
+  // Connect screen
+  const list = $('history-list');
+  const clearBtn = $('btn-clear-history');
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">No workouts yet</div>';
+    clearBtn.style.display = 'none';
+  } else {
+    list.innerHTML = html;
+    clearBtn.style.display = 'block';
+  }
+
+  // Control screen
+  $('control-history').innerHTML = html;
 }
 
 function toggleHistory() {
